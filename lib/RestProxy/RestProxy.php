@@ -2,15 +2,15 @@
 namespace RestProxy;
 
 use Guzzle\Http\Client;
+use Symfony\Component\HttpFoundation\Response;
 
 class RestProxy
 {
     private $request;
-    private $curl;
     private $map;
+    private $response;
 
-    private $content;
-    private $headers;
+    private $allowedHeaders = array();
 
     public function __construct(\Symfony\Component\HttpFoundation\Request $request)
     {
@@ -20,6 +20,11 @@ class RestProxy
     public function register($name, $url)
     {
         $this->map[$name] = $url;
+    }
+
+    public function setAllowedHeaders(array $headers)
+    {
+        $this->allowedHeaders = $headers;
     }
 
     public function run()
@@ -38,29 +43,40 @@ class RestProxy
         if (strpos($url, $name) == 1) {
             $url         = $mapUrl . str_replace("/{$name}", NULL, $url);
             $queryString = $this->request->getQueryString(); // ??
+            $url .= "?{$queryString}";
+
+            $headers = array();
+            foreach($this->allowedHeaders as $headerName) {
+                if($this->request->headers->has($headerName)) {
+                    $headers[$headerName] = $this->request->headers->get($headerName);
+                }
+            }
 
             switch ($this->request->getMethod()) {
                 case 'GET':
-                    $guzzle = $client->get($url);
+                    $guzzle = $client->get($url, $headers);
                     break;
                 case 'POST':
-                    $guzzle = $client->post($url);
+                    $guzzle = $client->post($url, $headers, $this->request->request->all());
                     break;
                 case 'DELETE':
-                    $guzzle = $client->delete($url);
+                    $guzzle = $client->delete($url, $headers);
                     break;
                 case 'PUT':
-                    $guzzle = $client->put($url);
+                    $guzzle = $client->put($url, $headers, $this->request->request->all());
                     break;
             }
 
             $response = $guzzle->send();
-            $this->content = $response->getBody();
+            $this->response = new Response($response->getBody(), $response->getStatusCode(), $response->getHeaders());
         }
     }
 
-    public function getContent()
+    /**
+     * @return Response
+     */
+    public function getResponse()
     {
-        return $this->content;
+        return $this->response;
     }
 }
