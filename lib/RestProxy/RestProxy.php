@@ -68,7 +68,7 @@ class RestProxy
             }
 
             $response = $guzzle->send();
-            $this->response = new Response($response->getBody(), $response->getStatusCode(), $response->getHeaders());
+            $this->response = new Response($response->getBody(), $response->getStatusCode(), $response->getHeaders()->toArray());
         }
     }
 
